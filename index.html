@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petualangan Aljabar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0fdf4; /* Soft green */
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .title-font { font-family: 'Fredoka One', cursive; }
+
+        /* 16:9 Container */
+        #app-container {
+            width: 100%;
+            max-width: 1100px;
+            aspect-ratio: 16/9;
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3z' fill='%23dcfce7' fill-opacity='0.5' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            text-align: center;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .screen.active { display: flex; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes bounce-slow {
+            0%, 100% { transform: translateY(-3%); }
+            50% { transform: translateY(3%); }
+        }
+        .animate-bounce-slow { animation: bounce-slow 3s infinite; }
+
+        .btn-interactive {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .btn-interactive:active { transform: scale(0.95); }
+        .btn-interactive:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+        .selectable-item {
+            transition: all 0.2s;
+            border: 4px solid transparent;
+        }
+        .selectable-item.selected {
+            border-color: #3b82f6; /* Blue */
+            background-color: #eff6ff;
+            transform: scale(1.05);
+        }
+
+        canvas {
+            border: 4px dashed #a78bfa;
+            border-radius: 16px;
+            cursor: crosshair;
+            background-color: white;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="p-2 md:p-4">
+
+    <div id="app-container">
+        
+        <!-- HEADER (Progress & Stars) -->
+        <div id="header" class="hidden absolute top-0 left-0 w-full p-4 flex justify-between items-center z-10 bg-white/60 backdrop-blur-md border-b-2 border-green-100">
+            <div class="flex items-center space-x-2 bg-yellow-100 p-2 px-6 rounded-full shadow-sm border-2 border-yellow-300">
+                <span class="text-2xl animate-pulse">⭐</span>
+                <span id="score-display" class="font-black text-2xl text-yellow-600 title-font">0</span>
+            </div>
+            <div class="w-1/2 bg-gray-200 h-6 rounded-full overflow-hidden border-2 border-white shadow-inner relative">
+                <div id="progress-bar" class="bg-gradient-to-r from-green-400 to-emerald-500 h-full w-0 transition-all duration-700 ease-out"></div>
+                <div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-600 mix-blend-difference">
+                    <span id="progress-text">0/10</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN: WELCOME -->
+        <div id="screen-welcome" class="screen active bg-gradient-to-br from-green-200 via-teal-100 to-blue-200">
+            <div class="text-7xl mb-4 animate-bounce-slow">🚀🧑‍🚀</div>
+            <h1 class="text-5xl md:text-6xl text-teal-800 mb-4 title-font tracking-wide">Petualangan Aljabar</h1>
+            <p class="text-2xl text-teal-900 mb-10 font-bold bg-white/50 px-8 py-3 rounded-full">
+                Selesaikan 10 misi untuk menjadi Master Aljabar!
+            </p>
+            <button onclick="startGame()" class="btn-interactive bg-yellow-400 hover:bg-yellow-300 text-yellow-900 title-font text-3xl py-5 px-12 rounded-full shadow-[0_8px_0_#b45309] hover:shadow-[0_4px_0_#b45309] hover:translate-y-1">
+                MULAI MISI ▶️
+            </button>
+        </div>
+
+        <!-- SCREEN: DYNAMIC QUESTION CONTAINER -->
+        <div id="screen-game" class="screen bg-slate-50 relative pt-20">
+            <!-- Content gets injected here by JS -->
+            <div id="question-container" class="w-full max-w-4xl flex flex-col items-center">
+                <!-- Template injection target -->
+            </div>
+        </div>
+
+        <!-- SCREEN: RESULT (Rubric & Assessment) -->
+        <div id="screen-result" class="screen bg-gradient-to-br from-yellow-200 to-orange-200 pt-10">
+            <div class="text-7xl mb-2 animate-bounce-slow" id="result-emoji">🏆</div>
+            <h1 class="text-5xl text-yellow-800 mb-6 title-font">Misi Selesai!</h1>
+            
+            <div class="bg-white/90 p-8 rounded-3xl shadow-xl border-4 border-yellow-400 max-w-2xl w-full mb-8">
+                <h3 class="text-3xl font-black text-gray-700 mb-6 border-b-4 border-gray-100 pb-4">Rapor Petualang:</h3>
+                
+                <div class="grid grid-cols-2 gap-6 text-xl text-left text-gray-700 font-bold mb-6">
+                    <div class="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-200">
+                        <span class="block text-sm text-yellow-600 uppercase tracking-wider">Total Bintang</span>
+                        <span id="final-score" class="text-4xl text-yellow-500 title-font">0</span> / 100
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
+                        <span class="block text-sm text-blue-600 uppercase tracking-wider">Tingkat Fokus</span>
+                        <span id="focus-score" class="text-2xl text-blue-700">Hebat!</span>
+                    </div>
+                </div>
+                
+                <div id="teacher-note" class="bg-gradient-to-r from-green-100 to-emerald-100 p-6 rounded-2xl text-green-800 font-bold text-center text-2xl shadow-inner border-2 border-green-200">
+                    "Kamu luar biasa! Teruslah berlatih."
+                </div>
+            </div>
+
+            <button onclick="location.reload()" class="btn-interactive bg-blue-500 hover:bg-blue-400 text-white title-font text-2xl py-4 px-10 rounded-full shadow-[0_6px_0_#1d4ed8] hover:shadow-[0_4px_0_#1d4ed8] hover:translate-y-1">
+                🔄 MAIN LAGI
+            </button>
+        </div>
+
+        <!-- CUSTOM MODAL FEEDBACK (Right/Wrong) -->
+        <div id="feedback-modal" class="hidden absolute inset-0 bg-black/60 z-50 flex justify-center items-center backdrop-blur-sm">
+            <div class="bg-white p-10 rounded-[2rem] shadow-2xl text-center transform scale-95 transition-transform duration-300 border-8 border-white max-w-lg w-full" id="feedback-box">
+                <div id="feedback-icon" class="text-8xl mb-4 animate-bounce-slow">🎉</div>
+                <h2 id="feedback-title" class="text-5xl title-font mb-4 text-gray-800">Benar!</h2>
+                <p id="feedback-text" class="text-2xl text-gray-600 mb-8 font-bold leading-relaxed">Kamu dapat 10 Bintang!</p>
+                <button onclick="closeFeedback()" id="feedback-btn" class="btn-interactive bg-green-500 hover:bg-green-400 text-white title-font text-3xl py-4 px-10 rounded-full shadow-[0_6px_0_#15803d] hover:shadow-[0_4px_0_#15803d] hover:translate-y-1 w-full">
+                    LANJUT ➔
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- GAME DATA (10 Varied Questions) ---
+        const questions = [
+            {
+                type: 'mcq',
+                title: 'Level 1: Gabungkan Benda!',
+                desc: 'Ada 2 apel ditambah 3 apel.',
+                visual: '🍎🍎 + 🍎🍎🍎',
+                eq: '2a + 3a = ...',
+                options: ['4a', '5a', '6a'],
+                correct: 1, // index 1 is '5a'
+                explanation: '2 apel ditambah 3 apel menjadi 5 apel (5a).'
+            },
+            {
+                type: 'mcq',
+                title: 'Level 2: Pengurangan Seru!',
+                desc: 'Kamu punya 5 permen, lalu dimakan 2.',
+                visual: '🍬🍬🍬🍬🍬 ➖ 🍬🍬',
+                eq: '5p - 2p = ...',
+                options: ['3p', '2p', '7p'],
+                correct: 0, 
+                explanation: '5 dikurang 2 sisanya 3 permen (3p).'
+            },
+            {
+                type: 'subst',
+                title: 'Level 3: Kotak Rahasia',
+                desc: 'Jika nilai sebuah kotak (x) adalah 4.',
+                visual: '📦 x = 4',
+                eq: 'Berapa hasil dari: x + 2 = ?',
+                options: ['5', '6', '8'],
+                correct: 1,
+                explanation: 'Karena x = 4, maka 4 + 2 = 6.'
+            },
+            {
+                type: 'tf',
+                title: 'Level 4: Benar atau Salah?',
+                desc: '3 mobil ditambah 1 mobil sama dengan 4 mobil.',
+                visual: '🚗🚗🚗 + 🚗 = 🚗🚗🚗🚗',
+                eq: '3m + 1m = 4m',
+                correct: true,
+                explanation: 'Benar! 3m + 1m = 4m.'
+            },
+            {
+                type: 'select',
+                title: 'Level 5: Cari Teman yang Sama!',
+                desc: 'Aljabar itu mengelompokkan huruf yang SAMA. Klik SEMUA kotak yang ada huruf "y" nya!',
+                items: ['2y', '3x', '5y', '10a', 'y', '4x'],
+                correct: [0, 2, 4], // indices of '2y', '5y', 'y'
+                explanation: 'Bagus! Yang berhuruf y adalah 2y, 5y, dan y.'
+            },
+            {
+                type: 'mcq',
+                title: 'Level 6: Beda Benda',
+                desc: 'Ada 2 Apel dan 1 Jeruk.',
+                visual: '🍎🍎 + 🍊',
+                eq: '2a + 1j = ?',
+                options: ['3a', '3j', 'Tetap 2a + 1j'],
+                correct: 2,
+                explanation: 'Apel dan Jeruk tidak bisa digabung! Huruf yang beda tidak bisa dijumlah.'
+            },
+            {
+                type: 'subst',
+                title: 'Level 7: Dua Kotak Rahasia',
+                desc: 'Kotak A isinya 2. Kotak B isinya 3.',
+                visual: '🟥 a = 2 &nbsp;&nbsp;|&nbsp;&nbsp; 🟦 b = 3',
+                eq: 'Berapa nilai: a + b = ?',
+                options: ['4', '5', '6'],
+                correct: 1,
+                explanation: 'Jika a=2 dan b=3, maka 2 + 3 = 5.'
+            },
+            {
+                type: 'tf',
+                title: 'Level 8: Teliti Dulu!',
+                desc: 'Jika k = 10, maka k - 2 = 7.',
+                visual: '📦 k = 10',
+                eq: '10 - 2 = 7',
+                correct: false,
+                explanation: 'Salah! Harusnya 10 - 2 = 8, bukan 7.'
+            },
+            {
+                type: 'canvas',
+                title: 'Level 9: Waktunya Menulis! ✍️',
+                desc: 'Gunakan jarimu atau mouse untuk menulis huruf aljabar.',
+                eq: 'Tulis huruf: x dan y'
+            },
+            {
+                type: 'canvas',
+                title: 'Level 10: Master Aljabar! ✍️',
+                desc: 'Tuliskan persamaan aljabar di bawah ini dengan rapi:',
+                eq: '3a + 2'
+            }
+        ];
+
+        // --- GAME STATE ---
+        let currentLevel = 0;
+        let score = 0;
+        let isAnswered = false; // Prevent multiple clicks
+        let selectedItems = []; // For 'select' question type
+        
+        // Canvas globals
+        let ctx;
+        let isDrawing = false;
+        let hasDrawn = false;
+
+        // --- CORE FUNCTIONS ---
+        function startGame() {
+            document.getElementById('screen-welcome').classList.remove('active');
+            document.getElementById('header').classList.remove('hidden');
+            document.getElementById('screen-game').classList.add('active');
+            
+            currentLevel = 0;
+            score = 0;
+            renderQuestion();
+            updateHeader();
+        }
+
+        function updateHeader() {
+            document.getElementById('score-display').innerText = score;
+            let percentage = ((currentLevel) / questions.length) * 100;
+            document.getElementById('progress-bar').style.width = percentage + '%';
+            document.getElementById('progress-text').innerText = `${currentLevel}/${questions.length}`;
+        }
+
+        function renderQuestion() {
+            if (currentLevel >= questions.length) {
+                showResult();
+                return;
+            }
+
+            isAnswered = false;
+            selectedItems = [];
+            const q = questions[currentLevel];
+            const container = document.getElementById('question-container');
+            container.innerHTML = ''; // Clear previous
+
+            // Common Header for Question
+            let html = `
+                <div class="bg-white/90 p-8 rounded-[2rem] shadow-xl w-full border-b-8 border-blue-200">
+                    <h2 class="text-4xl text-blue-600 mb-4 title-font">${q.title}</h2>
+                    <p class="text-2xl text-gray-700 mb-6 font-bold bg-blue-50 py-3 rounded-2xl border border-blue-100">${q.desc}</p>
+            `;
+
+            // Specific Body based on type
+            if (q.type === 'mcq' || q.type === 'subst') {
+                html += `
+                    <div class="flex justify-center items-center mb-6 text-6xl tracking-widest">${q.visual}</div>
+                    <p class="text-4xl font-black text-gray-800 mb-10 bg-gray-100 py-6 rounded-2xl border-4 border-gray-200 shadow-inner">
+                        ${q.eq}
+                    </p>
+                    <div class="grid grid-cols-3 gap-6">
+                        ${q.options.map((opt, i) => `
+                            <button onclick="checkAnswer(${i})" class="btn-interactive bg-white hover:bg-blue-50 text-blue-700 text-3xl font-black py-6 rounded-2xl border-4 border-blue-200 shadow-[0_6px_0_#bfdbfe] hover:shadow-[0_2px_0_#bfdbfe] hover:translate-y-1">
+                                ${opt}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+            } 
+            else if (q.type === 'tf') {
+                html += `
+                    <div class="flex justify-center items-center mb-6 text-6xl tracking-widest">${q.visual}</div>
+                    <p class="text-4xl font-black text-gray-800 mb-10 bg-gray-100 py-6 rounded-2xl border-4 border-gray-200 shadow-inner">
+                        ${q.eq}
+                    </p>
+                    <div class="grid grid-cols-2 gap-8 max-w-lg mx-auto">
+                        <button onclick="checkAnswer(true)" class="btn-interactive bg-green-100 hover:bg-green-200 text-green-700 text-3xl font-black py-8 rounded-3xl border-4 border-green-300 shadow-[0_8px_0_#86efac] hover:shadow-[0_2px_0_#86efac] hover:translate-y-2">
+                            ✅ BENAR
+                        </button>
+                        <button onclick="checkAnswer(false)" class="btn-interactive bg-red-100 hover:bg-red-200 text-red-700 text-3xl font-black py-8 rounded-3xl border-4 border-red-300 shadow-[0_8px_0_#fca5a5] hover:shadow-[0_2px_0_#fca5a5] hover:translate-y-2">
+                            ❌ SALAH
+                        </button>
+                    </div>
+                `;
+            }
+            else if (q.type === 'select') {
+                html += `
+                    <div class="grid grid-cols-3 gap-6 mb-8">
+                        ${q.items.map((item, i) => `
+                            <div onclick="toggleSelect(${i}, this)" class="btn-interactive selectable-item bg-white text-gray-800 text-4xl font-black py-8 rounded-3xl shadow-md border-4 border-gray-200 cursor-pointer select-none">
+                                ${item}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button onclick="checkSelectAnswer()" class="btn-interactive bg-blue-500 hover:bg-blue-400 text-white text-3xl title-font py-4 px-12 rounded-full shadow-[0_6px_0_#2563eb] w-full max-w-md mx-auto block">
+                        KUNCI JAWABAN ➔
+                    </button>
+                `;
+            }
+            else if (q.type === 'canvas') {
+                html += `
+                    <p class="text-4xl font-black text-indigo-700 mb-6 bg-indigo-50 py-4 rounded-2xl border-4 border-indigo-200">
+                        ${q.eq}
+                    </p>
+                    <canvas id="drawingPad" width="800" height="300" class="w-full max-w-3xl mb-6 shadow-inner mx-auto block bg-white"></canvas>
+                    <div class="flex space-x-6 justify-center">
+                        <button onclick="clearCanvas()" class="btn-interactive bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-2xl py-4 px-8 rounded-2xl">
+                            🗑️ Hapus
+                        </button>
+                        <button onclick="submitCanvas()" class="btn-interactive bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-2xl py-4 px-12 rounded-2xl shadow-[0_6px_0_#4f46e5]">
+                            SELESAI MENULIS ✅
+                        </button>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+
+            if (q.type === 'canvas') {
+                initCanvas();
+            }
+        }
+
+        // --- ANSWER CHECKING LOGIC ---
+        function checkAnswer(userAnswer) {
+            if (isAnswered) return;
+            isAnswered = true;
+            
+            const q = questions[currentLevel];
+            const isCorrect = (userAnswer === q.correct);
+            
+            processResult(isCorrect, q.explanation);
+        }
+
+        function toggleSelect(index, element) {
+            if (isAnswered) return;
+            const pos = selectedItems.indexOf(index);
+            if (pos > -1) {
+                selectedItems.splice(pos, 1);
+                element.classList.remove('selected', 'border-blue-500', 'bg-blue-50');
+            } else {
+                selectedItems.push(index);
+                element.classList.add('selected', 'border-blue-500', 'bg-blue-50');
+            }
+        }
+
+        function checkSelectAnswer() {
+            if (isAnswered) return;
+            const q = questions[currentLevel];
+            
+            if (selectedItems.length === 0) {
+                alert("Pilih minimal 1 kotak dulu ya!");
+                return;
+            }
+            
+            isAnswered = true;
+            // Check if arrays match perfectly
+            const sortedUser = selectedItems.slice().sort();
+            const sortedCorrect = q.correct.slice().sort();
+            const isCorrect = sortedUser.length === sortedCorrect.length && 
+                              sortedUser.every((val, index) => val === sortedCorrect[index]);
+            
+            processResult(isCorrect, q.explanation);
+        }
+
+        function processResult(isCorrect, explanation) {
+            if (isCorrect) {
+                score += 10;
+                showFeedback(true, "Hebat! Kamu dapat +10 Bintang!", "🌟", "text-green-500", "bg-green-500", "shadow-[0_6px_0_#15803d]");
+            } else {
+                showFeedback(false, "Tidak apa-apa, ayo belajar lagi!<br><span class='block mt-4 text-blue-600 font-black text-xl'>" + explanation + "</span>", "💡", "text-orange-500", "bg-orange-500", "shadow-[0_6px_0_#c2410c]");
+            }
+            updateHeader();
+        }
+
+        // --- FEEDBACK MODAL ---
+        function showFeedback(isCorrect, text, emoji, titleColor, btnBg, btnShadow) {
+            const modal = document.getElementById('feedback-modal');
+            const box = document.getElementById('feedback-box');
+            
+            document.getElementById('feedback-icon').innerText = emoji;
+            document.getElementById('feedback-title').innerText = isCorrect ? "BENAR!" : "KURANG TEPAT";
+            document.getElementById('feedback-title').className = `text-5xl title-font mb-4 ${titleColor}`;
+            document.getElementById('feedback-text').innerHTML = text;
+            
+            const btn = document.getElementById('feedback-btn');
+            btn.className = `btn-interactive ${btnBg} hover:opacity-90 text-white title-font text-3xl py-4 px-10 rounded-full ${btnShadow} hover:translate-y-1 w-full`;
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => box.classList.remove('scale-95'), 10);
+        }
+
+        function closeFeedback() {
+            const modal = document.getElementById('feedback-modal');
+            modal.classList.add('hidden');
+            document.getElementById('feedback-box').classList.add('scale-95');
+            
+            currentLevel++;
+            renderQuestion();
+        }
+
+        // --- CANVAS LOGIC ---
+        function initCanvas() {
+            const canvas = document.getElementById('drawingPad');
+            ctx = canvas.getContext('2d');
+            hasDrawn = false;
+            
+            // Set styles
+            ctx.strokeStyle = '#4f46e5'; // Indigo
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Clear background to white
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+
+            // Touch events
+            canvas.addEventListener('touchstart', startDrawing, {passive: false});
+            canvas.addEventListener('touchmove', draw, {passive: false});
+            canvas.addEventListener('touchend', stopDrawing);
+            canvas.addEventListener('touchcancel', stopDrawing);
+        }
+
+        function getCanvasPos(evt) {
+            const canvas = document.getElementById('drawingPad');
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            let clientX, clientY;
+            if (evt.touches && evt.touches.length > 0) {
+                clientX = evt.touches[0].clientX;
+                clientY = evt.touches[0].clientY;
+            } else {
+                clientX = evt.clientX;
+                clientY = evt.clientY;
+            }
+            
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            hasDrawn = true;
+            const pos = getCanvasPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getCanvasPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function stopDrawing(e) {
+            if(e) e.preventDefault();
+            isDrawing = false;
+            ctx.closePath();
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawingPad');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            hasDrawn = false;
+        }
+
+        function submitCanvas() {
+            if (isAnswered) return;
+            
+            if (!hasDrawn) {
+                alert("Coba coret-coret atau tulis persamaannya dulu ya sebelum lanjut!");
+                return;
+            }
+
+            isAnswered = true;
+            score += 10; // Auto give points for trying to write
+            updateHeader();
+            
+            showFeedback(true, "Bagus sekali tulisanmu! +10 Bintang!", "🎨", "text-indigo-500", "bg-indigo-500", "shadow-[0_6px_0_#4338ca]");
+        }
+
+        // --- RESULT SCREEN LOGIC ---
+        function showResult() {
+            document.getElementById('header').classList.add('hidden');
+            document.getElementById('screen-game').classList.remove('active');
+            document.getElementById('screen-result').classList.add('active');
+            
+            document.getElementById('final-score').innerText = score;
+            
+            const focusEl = document.getElementById('focus-score');
+            const noteEl = document.getElementById('teacher-note');
+            
+            // Logic Rapor (Max Score = 100)
+            if (score === 100) {
+                focusEl.innerText = "Sangat Fokus! 🥇";
+                focusEl.className = "text-2xl font-black text-green-600";
+                noteEl.innerText = "\"Sempurna! Kamu membaca soal dengan sangat teliti dan tenang!\"";
+            } else if (score >= 70) {
+                focusEl.innerText = "Cukup Fokus 👍";
+                focusEl.className = "text-2xl font-black text-blue-600";
+                noteEl.innerText = "\"Bagus sekali! Sedikit lagi lebih teliti, kamu pasti makin jago!\"";
+            } else {
+                focusEl.innerText = "Terus Berlatih 💪";
+                focusEl.className = "text-2xl font-black text-orange-600";
+                noteEl.innerText = "\"Kerja bagus sudah berani mencoba! Yuk, besok kita main dan belajar lagi pelan-pelan ya!\"";
+            }
+        }
+
+    </script>
+</body>
+</html>
